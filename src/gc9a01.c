@@ -40,6 +40,7 @@
 #include "py/runtime.h"
 #include "py/builtin.h"
 #include "py/mphal.h"
+#include "py/binary.h"
 
 // Fix for MicroPython > 1.21 https://github.com/ricksorensen
 #if MICROPY_VERSION_MAJOR >= 1 && MICROPY_VERSION_MINOR > 21
@@ -725,10 +726,10 @@ static mp_obj_t gc9a01_GC9A01_blit_buffer(size_t n_args, const mp_obj_t *args) {
 
     mp_get_buffer_raise(args[1], &buf_info, MP_BUFFER_READ);
 
-    mp_int_t x = mp_obj_get_int(args[2]);
-    mp_int_t y = mp_obj_get_int(args[3]);
-    mp_int_t w = mp_obj_get_int(args[4]);
-    mp_int_t h = mp_obj_get_int(args[5]);
+    int x = mp_obj_get_int(args[2]);
+    int y = mp_obj_get_int(args[3]);
+    int w = mp_obj_get_int(args[4]);
+    int h = mp_obj_get_int(args[5]);
 
     set_window(self, x, y, x + w - 1, y + h - 1);
     DC_HIGH();
@@ -739,6 +740,12 @@ static mp_obj_t gc9a01_GC9A01_blit_buffer(size_t n_args, const mp_obj_t *args) {
     int chunks = limit / buf_size;
     int rest = limit % buf_size;
     int i = 0;
+
+    // swap bytes. does this belong here?
+    // uint16_t *buf_u16 = buf_info.buf;
+    // for (i = 0; i < limit / 2; i ++) {
+    //     buf_u16[i] = _swap_bytes(buf_u16[i]);
+    // }
 
     for (; i < chunks; i++) {
         write_spi(self->spi_obj, (const uint8_t *)buf_info.buf + i * buf_size, buf_size);
@@ -1806,6 +1813,34 @@ static mp_obj_t gc9a01_map_bitarray_to_rgb565(size_t n_args, const mp_obj_t *arg
 
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(gc9a01_map_bitarray_to_rgb565_obj, 3, 6, gc9a01_map_bitarray_to_rgb565);
 
+mp_obj_t gc9a01_allocate_framebuffer(mp_obj_t size_obj, mp_obj_t caps_obj)
+{
+    mp_int_t size = mp_obj_get_int(size_obj);
+    mp_int_t caps = mp_obj_get_int(caps_obj);
+    
+    if (size <= 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("size must be positive"));
+    }
+
+    void *buf = heap_caps_calloc(1, size, caps);
+
+    if (buf == NULL) {
+        mp_raise_msg_varg(
+            &mp_type_MemoryError,
+            MP_ERROR_TEXT("Not enough memory available (%d)"),
+            size
+        );
+        return mp_const_none;
+    }
+
+    mp_obj_array_t *view = MP_OBJ_TO_PTR(mp_obj_new_memoryview(BYTEARRAY_TYPECODE, size, buf));
+    view->typecode |= 0x80; // used to indicate writable buffer
+
+    return MP_OBJ_FROM_PTR(view);
+}
+
+static MP_DEFINE_CONST_FUN_OBJ_2(gc9a01_allocate_framebuffer_obj, gc9a01_allocate_framebuffer);
+
 
 //
 // jpg routines
@@ -2765,6 +2800,15 @@ static const mp_map_elem_t gc9a01_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_color565), (mp_obj_t)&gc9a01_color565_obj },
     { MP_ROM_QSTR(MP_QSTR_map_bitarray_to_rgb565), (mp_obj_t)&gc9a01_map_bitarray_to_rgb565_obj },
     { MP_ROM_QSTR(MP_QSTR_GC9A01), (mp_obj_t)&gc9a01_GC9A01_type },
+
+    { MP_ROM_QSTR(MP_QSTR_allocate_framebuffer), (mp_obj_t)&gc9a01_allocate_framebuffer_obj },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_32BIT),    MP_ROM_INT(MALLOC_CAP_32BIT)     },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_8BIT),     MP_ROM_INT(MALLOC_CAP_8BIT)      },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_DMA),      MP_ROM_INT(MALLOC_CAP_DMA)       },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_SPIRAM),   MP_ROM_INT(MALLOC_CAP_SPIRAM)    },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_INTERNAL), MP_ROM_INT(MALLOC_CAP_INTERNAL)  },
+    { MP_ROM_QSTR(MP_QSTR_MEMORY_DEFAULT),  MP_ROM_INT(MALLOC_CAP_DEFAULT)   },
+
     { MP_ROM_QSTR(MP_QSTR_BLACK), MP_ROM_INT(BLACK) },
     { MP_ROM_QSTR(MP_QSTR_BLUE), MP_ROM_INT(BLUE) },
     { MP_ROM_QSTR(MP_QSTR_RED), MP_ROM_INT(RED) },

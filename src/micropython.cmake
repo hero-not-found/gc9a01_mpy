@@ -5,13 +5,13 @@ add_library(usermod_gc9a01 INTERFACE)
 target_sources(usermod_gc9a01 INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/gc9a01.c
     ${CMAKE_CURRENT_LIST_DIR}/mpfile.c
-    ${CMAKE_CURRENT_LIST_DIR}/tjpgd565.c
+
+    # ${CMAKE_CURRENT_LIST_DIR}/tjpgd565.c
 )
 
 # Add the current directory as an include directory.
 target_include_directories(usermod_gc9a01 INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}
-
 )
 target_compile_definitions(usermod_gc9a01 INTERFACE
     MODULE_GC9A01_ENABLED=1
