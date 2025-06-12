@@ -735,7 +735,7 @@ static mp_obj_t gc9a01_GC9A01_blit_buffer(size_t n_args, const mp_obj_t *args) {
     DC_HIGH();
     CS_LOW();
 
-    const int buf_size = 256;
+    const int buf_size = 2048;
     int limit = MIN(buf_info.len, w * h * 2);
     int chunks = limit / buf_size;
     int rest = limit % buf_size;
@@ -1823,6 +1823,7 @@ mp_obj_t gc9a01_allocate_framebuffer(mp_obj_t size_obj, mp_obj_t caps_obj)
     }
 
     void *buf = heap_caps_calloc(1, size, caps);
+    memset(buf, 0, size);
 
     if (buf == NULL) {
         mp_raise_msg_varg(
@@ -2659,6 +2660,13 @@ static mp_obj_t gc9a01_GC9A01_init(mp_obj_t self_in) {
     mp_hal_delay_ms(20);
 
     set_rotation(self);
+
+
+    set_window(self, 0, 0, self->width - 1, self->height - 1);
+    DC_HIGH();
+    CS_LOW();
+    fill_color_buffer(self->spi_obj, BLACK, self->width * self->height);
+    CS_HIGH();
 
     if (self->backlight) {
         mp_hal_pin_write(self->backlight, 1);
