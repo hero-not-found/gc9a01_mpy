@@ -735,11 +735,11 @@ static mp_obj_t gc9a01_GC9A01_blit_buffer(size_t n_args, const mp_obj_t *args) {
     DC_HIGH();
     CS_LOW();
 
-    const int buf_size = 2048;
-    int limit = MIN(buf_info.len, w * h * 2);
-    int chunks = limit / buf_size;
-    int rest = limit % buf_size;
-    int i = 0;
+    // const int buf_size = 32768;
+    // int limit = MIN(buf_info.len, w * h * 2);
+    // int chunks = limit / buf_size;
+    // int rest = limit % buf_size;
+    // int i = 0;
 
     // swap bytes. does this belong here?
     // uint16_t *buf_u16 = buf_info.buf;
@@ -747,12 +747,14 @@ static mp_obj_t gc9a01_GC9A01_blit_buffer(size_t n_args, const mp_obj_t *args) {
     //     buf_u16[i] = _swap_bytes(buf_u16[i]);
     // }
 
-    for (; i < chunks; i++) {
-        write_spi(self->spi_obj, (const uint8_t *)buf_info.buf + i * buf_size, buf_size);
-    }
-    if (rest) {
-        write_spi(self->spi_obj, (const uint8_t *)buf_info.buf + i * buf_size, rest);
-    }
+    write_spi(self->spi_obj, (const uint8_t *)buf_info.buf, buf_info.len);
+
+    // for (; i < chunks; i++) {
+    //     write_spi(self->spi_obj, (const uint8_t *)buf_info.buf + i * buf_size, buf_size);
+    // }
+    // if (rest) {
+    //     write_spi(self->spi_obj, (const uint8_t *)buf_info.buf + i * buf_size, rest);
+    // }
     CS_HIGH();
 
     return mp_const_none;
